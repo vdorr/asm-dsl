@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -fwarn-incomplete-patterns -fwarn-unused-binds -fwarn-unused-imports -fno-warn-tabs #-}
+{-# LANGUAGE CPP, TemplateHaskell, RecursiveDo, UnicodeSyntax #-}
 
 module Language.Asm.Example.Tiny where
 
@@ -9,6 +11,11 @@ data I
 	| St Int
 	| Cmp
 	| Br Int
+
+--addInstruction :: I -> Asm Int I ()
+addInstruction = undefined
+
+$(instructionSet "addInstruction" "Int" "I" "" False)
 
 bubbleSort = undefined
 
