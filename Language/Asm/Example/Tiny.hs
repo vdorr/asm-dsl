@@ -3,6 +3,8 @@
 
 module Language.Asm.Example.Tiny where
 
+import Prelude hiding (not, drop)
+
 import Language.Asm
 import Language.Asm.TH
 
@@ -17,7 +19,7 @@ data I
 	| Jmp Int | CJmp Int
 
 	| Push Int
-	| Dup | Drop | Swap | Over
+	| Dup | Drop | Swap | Over | Over2
 
 
 addInstruction :: Monad m => I -> AsmT Int I m ()
@@ -30,31 +32,35 @@ sortArray :: Asm Int I ()
 sortArray = mdo
 	push 0 --first cell contains number of elements
 	ld
-	dup --check if we have more than 1 cell
-	push 1
-	gte
-	lnot --if not then branch to the end
-	cjmp end
+	push (-1)
+	add
+	push 0
+	forLoopMacro $ do
 
-	loop <- label
+		push 0 --first cell contains number of elements
+		ld
+		over --get index value of outer loop
+		push 1
+		add
+		forLoopMacro $ do
+			undefined
 
-	end <- label
-	return ()
 
 -- ... final initial --
-forLoop body = mdo
+forLoopMacro :: Asm Int I () -> Asm Int I ()
+forLoopMacro body = mdo
 	start <- label
-	-- initVal --push initial and final value on stack
-	-- endVal
-	over; over --clone init and final value
-	gt
-	cjmp end --end of loop, goto end
-	push 1; add --increment initial value
-	body
-	jmp start
+	over --clone final...
+	over -- and initial value
+	gt --check if we are at end of loop
+	cjmp end --if yes, skip to end
+	push 1 --increment initial value
+	add
+	body --run loop body
+	jmp start --next iteration
 	end <- label
-	drop; drop --discard init and final values
-	return ()
+	drop --discard init and final values
+	drop
 
 
 
