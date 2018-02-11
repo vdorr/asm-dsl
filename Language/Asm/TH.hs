@@ -40,13 +40,21 @@ makeInstr suffix callName addrType opType n typeList = let
 
 	retType = actionType addrType opType (tupleT 0)
 	in do
-		sig <- sigD fName $ forallT 
+		sig <- sigD fName $ forallT
 			[PlainTV mVar]
-			(cxt [classP (mkName "Monad") [varT mVar]])
+			(cxt [
+				simpleClassP "Monad" mVar
+				] )
 			signature
 
 		fun <- funD fName [ clause args (normalB body') [] ]
 		return [sig, fun]
+
+
+simpleClassP :: String -> Name -> Q Type
+simpleClassP conName varName = (appT
+	(conT (mkName conName))
+	(varT varName))
 
 
 actionType :: Name -> Name -> TypeQ -> TypeQ
@@ -88,11 +96,11 @@ makeInstrMonadicArgs suffix callName addrType opType n typeList = let
 
 	retType = actionType addrType opType (tupleT 0)
 	in do
-		sig <- sigD fName $ forallT 
+		sig <- sigD fName $ forallT
 			[PlainTV (mkName "m")]
-			(cxt [
-				  classP (mkName "Monad") [varT (mkName "m")]
-				, classP (mkName "Functor") [varT (mkName "m")]])
+			(cxt
+				[ simpleClassP "Monad" (mkName "m")
+				, simpleClassP "Functor" (mkName "m") ])
 			signature
 
 		fun <- funD fName [ clause args (normalB body') [] ]
@@ -112,4 +120,3 @@ instructionSet callName addrTyName tyName suffix monadicArgs = do
 		NormalC n bangTypeList -> mkI t n (map snd bangTypeList)
 		RecC n varBangTypeList -> mkI n t (map (\(_, _, t) -> t) varBangTypeList)
 		_ -> error "AsmTH.instructionSet" --FIXME elaborate
-
