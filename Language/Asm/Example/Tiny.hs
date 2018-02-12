@@ -12,15 +12,16 @@ data I
 	= Ld -- address -- value
 	| St -- value address --
 
-	| Gt | GtE | Lt | Eq
+	| Gt | GtE | Lt | LtE | Eq
 	| Add
-	| LNot
+	| Not
 
-	| Jmp Int | CJmp Int
+	| Jmp Int -- absolute jump
+	| CJmp Int -- conditional absolute jump
 
 	| Push Int
 	| Dup | Drop | Swap | Over
-	-- | Over2
+	deriving (Show)
 
 
 addInstruction :: Monad m => I -> AsmT Int I m ()
@@ -29,89 +30,50 @@ addInstruction = flip instruction 1
 $(instructionSet "addInstruction" "Int" "I" "" False)
 
 
-sortArray :: Asm Int I ()
-sortArray = mdo
-	push 0 --first cell contains number of elements
+example :: Asm Int I ()
+example = mdo
+	push 0
 	ld
+	push 1
+	add
+
+	begin <- label
+	dup
+	push 1
+	lte
+	cjmp end
+
+	dup
+	ld
+
 	push (-1)
 	add
-	push 0
-	forLoopMacro $ mdo
 
-		dup --get index value of outer loop
-		push 1 --convert it to adress to data array
-		add
-		scratchpadAddress
-		st
-
-
-		push 0 --first cell contains number of elements
-		ld
-		over --get index value of outer loop one more time
-		push 1
-		add
-		forLoopMacro $ mdo
-			dup --get current loop index
-			push 1 --convert it to adress to data array
-			add
-			ld --load value
-
-			scratchpadAddress --load other value
-			ld
-			ld
-
-			lt
-			lnot -- ??
-			cjmp skip
-
-			dup --current loop index is new value
-			scratchpadAddress
-			st
-
-			skip <- label
-			return ()
-
-		dup --get index value of outer loop
-		scratchpadAddress
-		ld
-		eq
-		cjmp don'tSwap
-		--TODO do swap
-
-		don'tSwap <- label
-		return ()
-
-	where
-	scratchpadAddress = do
-		push 0 --compute address of first free cell after data array
-		ld
-		push 1
-		add
-		st
-
-
--- ... final initial --
-forLoopMacro :: Asm Int I () -> Asm Int I ()
-forLoopMacro body = mdo
-	start <- label
-	over --clone final...
-	over -- and initial value
-	gt --check if we are at end of loop
-	cjmp end --if yes, skip to end
-	push 1 --increment initial value
-	add
-	body --run loop body
-	jmp start --next iteration
+	jmp begin
 	end <- label
-	drop --discard init and final values
-	drop
+	push 0
+	ld
+	push 1
+	add
+	st
 
+eval :: [I] -> ([Int], Int, [Int]) -> ([Int], Int, [Int])
+eval p st' = let
+	end = length p
+	f k p st@(m, i, d)
+		| i >= k = st
+		| otherwise = f k p (evalOne (p !! i) (m, i + 1, d))
+	in f end p st'
 
-
---XXX fuck it, it is too long, just do sum of array and something with forward jump
-
-eval :: [I] -> ([Int], [Int]) -> ([Int], [Int])
-eval = undefined
+evalOne :: I -> ([Int], Int, [Int]) -> ([Int], Int, [Int])
+evalOne (Push k) (m, i, d) = (m, i, k : d)
+evalOne Ld (m, i, a:d) = (m, i, (m !! a) : d)
+evalOne St (m, i, a:v:d) = let (l, _:u) = splitAt a m in (l ++ v : u, i, d)
+evalOne LtE (m, i, y:x:d) = (m, i, (if x >= y then 1 else 0) : d)
+evalOne Add (m, i, y:x:d) = (m, i, (x + y) : d)
+evalOne (CJmp a) (m, i, x:d) = (m, if x == 0 then i else a, d)
+evalOne (Jmp a) (m, _, d) = (m, a, d)
+evalOne i st = error ("evalOne " ++ show (i, st))
 
 main :: IO ()
 main = do
@@ -119,6 +81,6 @@ main = do
 	let testData = [ 4, 1000, -10, 256, 500, 0 ]
 
 
-	print $ eval (assemble sortArray) (testData, [])
+	print $ eval (assemble example) (testData, 0, [])
 
 	print 1
