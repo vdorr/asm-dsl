@@ -1,3 +1,8 @@
+-- |
+-- Module: TH
+-- Description: Common functions.
+--
+-- Embedded assembler helper generation
 
 module Language.Asm.TH ( instructionSet ) where
 
@@ -79,7 +84,13 @@ makeInstrMonadicArgs suffix callName addrType opType n typeList = let
 		return [sig, fun]
 
 -- | Generate helper functions for embedded assembler
-instructionSet :: String -> String -> String -> String -> Bool -> Q [Dec]
+instructionSet
+	:: String -- ^ name of function to call in instruction value, typically 'instruction'
+	-> String -- ^ name of type of memory address, addr parameter of 'AsmT' type
+	-> String -- ^ name of instruction set type
+	-> String -- ^ suffix added to each helper name
+	-> Bool -- ^ make arguments of instruction monadic
+	-> Q [Dec]
 instructionSet callName addrTyName tyName suffix monadicArgs = do
 	let addrType = mkName addrTyName
 	let mkI = if monadicArgs
