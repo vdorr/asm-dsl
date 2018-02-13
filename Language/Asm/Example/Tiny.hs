@@ -1,4 +1,3 @@
-{-# OPTIONS_GHC -fwarn-incomplete-patterns -fwarn-unused-binds -fwarn-unused-imports -fno-warn-tabs #-}
 {-# LANGUAGE TemplateHaskell, RecursiveDo #-}
 
 module Language.Asm.Example.Tiny where
@@ -16,14 +15,13 @@ data I
 
 	| Gt | GtE | Lt | LtE | Eq
 	| Add
-	| Not
 
 	| Jmp Int -- absolute jump
 	| CJmp Int -- conditional absolute jump
 
 	| Push Int
 	| Dup | Drop | Swap | Over
-	deriving (Show)
+	deriving Show
 
 evalOne :: I -> ([Int], Int, [Int]) -> ([Int], Int, [Int])
 evalOne (Push k) (m, i, d) = (m, i, k : d)
@@ -55,6 +53,7 @@ eval p st' = let
 addInstruction :: Monad m => I -> AsmT Int I m ()
 addInstruction = flip instruction 1
 
+-- generate helpers for type I
 $(instructionSet "addInstruction" "Int" "I" "" False)
 
 sumArray :: Asm Int I ()

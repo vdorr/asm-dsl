@@ -1,5 +1,4 @@
 
-
 module Main where
 
 import Language.Asm.Example.Tiny
