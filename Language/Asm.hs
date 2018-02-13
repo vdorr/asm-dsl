@@ -15,10 +15,9 @@ type AsmT addr inst m a = StateT (AsmState addr inst) m a
 type Asm addr inst a = AsmT addr inst Identity a
 
 instruction :: (Monad m, Num addr) => inst -> addr -> AsmT addr inst m ()
-instruction i size = modify $ \st -> st {
-	  asmtAddress = asmtAddress st + size
-	, asmtListing = i : asmtListing st
-}
+instruction i size = modify $ \st -> st
+	{ asmtAddress = asmtAddress st + size
+	, asmtListing = i : asmtListing st }
 
 --TODO non-mdo version
 label :: (Monad m) => AsmT addr inst m addr
@@ -30,4 +29,4 @@ assembleT xx = do
 	return $ reverse $ asmtListing q
 
 assemble :: (Num addr) => Asm addr inst a -> [inst]
-assemble xx = runIdentity $ assembleT xx
+assemble = runIdentity . assembleT

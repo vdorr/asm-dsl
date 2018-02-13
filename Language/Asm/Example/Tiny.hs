@@ -8,6 +8,8 @@ import Prelude hiding (not, drop)
 import Language.Asm
 import Language.Asm.TH
 
+--------------------------------------------------------------------------------
+
 data I
 	= Ld -- address -- value
 	| St -- value address --
@@ -23,64 +25,73 @@ data I
 	| Dup | Drop | Swap | Over
 	deriving (Show)
 
+evalOne :: I -> ([Int], Int, [Int]) -> ([Int], Int, [Int])
+evalOne (Push k) (m, i, d) = (m, i, k : d)
+evalOne Ld (m, i, a:d) = (m, i, (m !! a) : d)
+evalOne St (m, i, a:v:d) = (setElem m a v, i, d)
+	where
+	setElem lst idx val = let (l, _:u) = splitAt idx lst in l ++ val : u
+evalOne LtE (m, i, y:x:d) = (m, i, (if x >= y then 1 else 0) : d)
+evalOne Eq (m, i, y:x:d) = (m, i, (if x == y then 1 else 0) : d)
+evalOne Add (m, i, y:x:d) = (m, i, (x + y) : d)
+evalOne (CJmp a) (m, i, x:d) = (m, if x == 0 then i else a, d)
+evalOne (Jmp a) (m, _, d) = (m, a, d)
+evalOne Drop (m, i, _:d) = (m, i, d)
+evalOne Dup (m, i, x:d) = (m, i, x:x:d)
+evalOne Over (m, i, x:y:d) = (m, i, y:x:y:d)
+evalOne Swap (m, i, x:y:d) = (m, i, y:x:d)
+evalOne i st = error ("evalOne " ++ show (i, st))
+
+eval :: [I] -> ([Int], Int, [Int]) -> ([Int], Int, [Int])
+eval p st' = let
+	end = length p
+	f k st@(m, i, d)
+		| i >= k = st
+		| otherwise = f k (evalOne (p !! i) (m, i + 1, d))
+	in f end st'
+
+--------------------------------------------------------------------------------
 
 addInstruction :: Monad m => I -> AsmT Int I m ()
 addInstruction = flip instruction 1
 
 $(instructionSet "addInstruction" "Int" "I" "" False)
 
+sumArray :: Asm Int I ()
+sumArray = mdo
 
-example :: Asm Int I ()
-example = mdo
-	push 0
+	push 0 --number of cells
 	ld
-	push 1
-	add
+	push 1 --add address of start of array
+	add --this is start value
+
+	push 0 --sum
 
 	begin <- label
-	dup
+	over --check for cycle end
 	push 1
-	lte
+	eq
 	cjmp end
 
-	dup
-	ld
+	swap
+	push (-1) --decrement
+	add
+	swap
 
-	push (-1)
+	over
+	ld
 	add
 
 	jmp begin
 	end <- label
+
 	push 0
 	ld
 	push 1
 	add
 	st
 
-eval :: [I] -> ([Int], Int, [Int]) -> ([Int], Int, [Int])
-eval p st' = let
-	end = length p
-	f k p st@(m, i, d)
-		| i >= k = st
-		| otherwise = f k p (evalOne (p !! i) (m, i + 1, d))
-	in f end p st'
+	drop --discard cycle counter
 
-evalOne :: I -> ([Int], Int, [Int]) -> ([Int], Int, [Int])
-evalOne (Push k) (m, i, d) = (m, i, k : d)
-evalOne Ld (m, i, a:d) = (m, i, (m !! a) : d)
-evalOne St (m, i, a:v:d) = let (l, _:u) = splitAt a m in (l ++ v : u, i, d)
-evalOne LtE (m, i, y:x:d) = (m, i, (if x >= y then 1 else 0) : d)
-evalOne Add (m, i, y:x:d) = (m, i, (x + y) : d)
-evalOne (CJmp a) (m, i, x:d) = (m, if x == 0 then i else a, d)
-evalOne (Jmp a) (m, _, d) = (m, a, d)
-evalOne i st = error ("evalOne " ++ show (i, st))
-
-main :: IO ()
-main = do
-
-	let testData = [ 4, 1000, -10, 256, 500, 0 ]
-
-
-	print $ eval (assemble example) (testData, 0, [])
-
-	print 1
+sumArrayProg :: [I]
+sumArrayProg = assemble sumArray
