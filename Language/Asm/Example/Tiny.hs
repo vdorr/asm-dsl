@@ -1,3 +1,10 @@
+-- |
+-- Module: Tiny
+-- Description: Basic example.
+--
+-- Show how to generate helper and use it to create simple program
+-- for rudimentary stack and memory virtual machine
+
 {-# LANGUAGE TemplateHaskell, RecursiveDo #-}
 
 module Language.Asm.Example.Tiny where
@@ -9,8 +16,11 @@ import Language.Asm.TH
 
 --------------------------------------------------------------------------------
 
+-- * Target virtual machine
+
+-- | Instruction set type
 data I
-	= Ld -- address -- value
+	= Ld -- ^ address -- value
 	| St -- value address --
 
 	| Gt | GtE | Lt | LtE | Eq
@@ -53,9 +63,15 @@ eval p st' = let
 addInstruction :: Monad m => I -> AsmT Int I m ()
 addInstruction = flip instruction 1
 
+
+-- * Generated helpers
+
 -- generate helpers for type I
 $(instructionSet "addInstruction" "Int" "I" "" False)
 
+-- * Using embedded assembler
+
+-- | See source for details
 sumArray :: Asm Int I ()
 sumArray = mdo
 
@@ -92,5 +108,7 @@ sumArray = mdo
 
 	drop --discard cycle counter
 
+
+-- | Resulting program, can be displayed with 'Prelude.show'
 sumArrayProg :: [I]
 sumArrayProg = assemble sumArray

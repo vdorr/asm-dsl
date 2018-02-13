@@ -1,3 +1,8 @@
+-- |
+-- Module: Asm
+-- Description: Embedded assembler.
+--
+-- Embedded assembler
 
 module Language.Asm
 	( AsmState(..)
@@ -22,7 +27,10 @@ type AsmT addr inst m a = StateT (AsmState addr inst) m a
 type Asm addr inst a = AsmT addr inst Identity a
 
 -- | Add instruction to program and move memory pointer by specified amount
-instruction :: (Monad m, Num addr) => inst -> addr -> AsmT addr inst m ()
+instruction :: (Monad m, Num addr)
+	=> inst -- ^ Instruction inserted to program
+	-> addr -- ^ Size of instruction
+	-> AsmT addr inst m ()
 instruction i size = modify $ \st -> st
 	{ asmtAddress = asmtAddress st + size
 	, asmtListing = i : asmtListing st }
@@ -34,9 +42,8 @@ label = gets asmtAddress
 
 -- | Assemble program
 assembleT :: (Monad m, Num addr) => AsmT addr inst m a -> m [inst]
-assembleT xx = do
-	q <- execStateT xx (AsmState 0 [])
-	return $ reverse $ asmtListing q
+assembleT p
+	= reverse . asmtListing <$> execStateT p (AsmState 0 [])
 
 -- | Assemble program
 assemble :: (Num addr) => Asm addr inst a -> [inst]

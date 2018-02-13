@@ -85,8 +85,8 @@ makeInstrMonadicArgs suffix callName addrType opType n typeList = let
 
 -- | Generate helper functions for embedded assembler
 instructionSet
-	:: String -- ^ name of function to call in instruction value, typically 'instruction'
-	-> String -- ^ name of type of memory address, addr parameter of 'AsmT' type
+	:: String -- ^ name of function to call in instruction value, typically 'Language.Asm.instruction'
+	-> String -- ^ name of type of memory address, addr parameter of 'Language.Asm.AsmT' type
 	-> String -- ^ name of instruction set type
 	-> String -- ^ suffix added to each helper name
 	-> Bool -- ^ make arguments of instruction monadic
