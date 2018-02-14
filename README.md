@@ -1,5 +1,6 @@
-# Revision history for asm-dsl
+# asm-dsl
 
-## 0.1.0.0  -- YYYY-mm-dd
+Helpers for building embedded assembler-like DSLs
 
-* First version. Released on an unsuspecting world.
+# TODO
+* support for relative jumps

@@ -3,7 +3,7 @@ name:                asm-dsl
 version:             0.1.0.0
 -- A short (one-line) description of the package.
 synopsis:            helpers for building assembly-like EDSLs
--- description:
+description: Helpers for building assembly-like EDSLs
 homepage:            www.github.com/vdorr/asm-dsl
 license:             MIT
 license-file:        LICENSE
@@ -13,6 +13,10 @@ category:            Language
 build-type:          Simple
 extra-source-files:  README.md
 cabal-version:       >=1.10
+
+source-repository head
+  type:                 git
+  location:             git://github.com/vdorr/asm-dsl
 
 Test-Suite t1
   build-depends:     asm-dsl, base >=4.9 && <4.10, mtl >=2.2 && <2.3, template-haskell >=2.11 && <2.12
