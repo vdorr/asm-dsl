@@ -66,7 +66,6 @@ addInstruction = flip instruction 1
 
 -- * Generated helpers
 
--- generate helpers for type I
 $(instructionSet "addInstruction" "Int" "I" "" False)
 
 -- * Using embedded assembler
