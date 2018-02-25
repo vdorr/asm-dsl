@@ -4,7 +4,8 @@ version:             0.1.0.0
 -- A short (one-line) description of the package.
 synopsis:            helpers for building assembly-like EDSLs
 description: Helpers for building assembly-like EDSLs
-homepage:            www.github.com/vdorr/asm-dsl
+homepage:            https://www.github.com/vdorr/asm-dsl
+bug-reports:         https://www.github.com/vdorr/asm-dsl/issues
 license:             MIT
 license-file:        LICENSE
 author:              vdorr
