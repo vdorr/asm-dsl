@@ -9,6 +9,7 @@ module Language.Asm
 	, AsmT
 	, Asm
 	, instruction
+	, instruction_
 	, label
 	, assembleT
 	, assemble
@@ -26,12 +27,20 @@ type AsmT addr inst m a = StateT (AsmState addr inst) m a
 
 type Asm addr inst a = AsmT addr inst Identity a
 
--- | Add instruction to program and move memory pointer by specified amount
+
+-- | Add instruction to program and move memory pointer by specified amount and return address of instruction
 instruction :: (Monad m, Num addr)
 	=> inst -- ^ Instruction inserted to program
 	-> addr -- ^ Size of instruction
+	-> AsmT addr inst m addr
+instruction i size = label <* instruction_ i size
+
+-- | Add instruction to program and move memory pointer by specified amount
+instruction_ :: (Monad m, Num addr)
+	=> inst -- ^ Instruction inserted to program
+	-> addr -- ^ Size of instruction
 	-> AsmT addr inst m ()
-instruction i size = modify $ \st -> st
+instruction_ i size = modify $ \st -> st
 	{ asmtAddress = asmtAddress st + size
 	, asmtListing = i : asmtListing st }
 
@@ -48,3 +57,4 @@ assembleT p
 -- | Assemble program
 assemble :: (Num addr) => Asm addr inst a -> [inst]
 assemble = runIdentity . assembleT
+

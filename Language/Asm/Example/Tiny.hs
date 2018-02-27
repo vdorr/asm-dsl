@@ -61,7 +61,7 @@ eval p st' = let
 --------------------------------------------------------------------------------
 
 addInstruction :: Monad m => I -> AsmT Int I m ()
-addInstruction = flip instruction 1
+addInstruction = flip instruction_ 1
 
 
 -- * Generated helpers
