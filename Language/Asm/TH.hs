@@ -9,9 +9,10 @@ module Language.Asm.TH ( instructionSet ) where
 import Language.Haskell.TH
 import Control.Monad
 import Data.Char (toLower)
+import Data.Maybe (fromMaybe)
 
-makeInstr :: String -> String -> Name -> Name -> Name -> [Type] -> Q [Dec]
-makeInstr suffix callName addrType opType n typeList = let
+makeInstr :: String -> String -> Name -> Name -> Name -> Maybe Name -> [Type] -> Q [Dec]
+makeInstr suffix callName addrType opType n retValType typeList = let
 	ari = length typeList
 	fName = mkName $ map toLower (nameBase n) ++ suffix
 	argNames = map (mkName . ("v" ++) . show) [1..ari]
@@ -21,11 +22,13 @@ makeInstr suffix callName addrType opType n typeList = let
 
 	body' = appE (varE (mkName callName)) body
 
-	mVar = mkName "m"
+	mVar = mkName "m" --variable representing underlying Monad
+	retValType' = fromMaybe (tupleT 0) (fmap conT retValType)
 
 	signature = foldr (\ a b -> appT (appT arrowT (return a)) b) retType typeList
 
-	retType = actionType addrType opType (tupleT 0)
+	retType = actionType addrType opType retValType'
+
 	in do
 		sig <- sigD fName $ forallT
 			[PlainTV mVar]
@@ -42,6 +45,7 @@ simpleClassP conName varName = (appT
 	(conT (mkName conName))
 	(varT varName))
 
+-- | Generate type of putter action 'AsmT addrType opType resultType'
 actionType :: Name -> Name -> TypeQ -> TypeQ
 actionType addrType opType resultType
 	= appT (appT
@@ -53,8 +57,8 @@ actionType addrType opType resultType
 		(varT (mkName "m")))
 		resultType
 
-makeInstrMonadicArgs :: String -> String -> Name -> Name -> Name -> [Type] -> Q [Dec]
-makeInstrMonadicArgs suffix callName addrType opType n typeList = let
+makeInstrMonadicArgs :: String -> String -> Name -> Name -> Name -> Maybe Name -> [Type] -> Q [Dec]
+makeInstrMonadicArgs suffix callName addrType opType n retValType typeList = let
 	ari = length typeList
 	fName = mkName $ map toLower (nameBase n) ++ suffix
 	argNames = map (mkName . ("v" ++) . show) [1..ari]
@@ -71,7 +75,9 @@ makeInstrMonadicArgs suffix callName addrType opType n typeList = let
 
 	signature = foldr (\ a b -> appT (appT arrowT ( actionType addrType opType(return a))) b) retType typeList
 
-	retType = actionType addrType opType (tupleT 0)
+	retValType' = fromMaybe (tupleT 0) (fmap conT retValType)
+	retType = actionType addrType opType retValType'
+
 	in do
 		sig <- sigD fName $ forallT
 			[PlainTV (mkName "m")]
@@ -89,16 +95,23 @@ instructionSet
 	-> String -- ^ name of type of memory address, addr parameter of 'Language.Asm.AsmT' type
 	-> String -- ^ name of instruction set type
 	-> String -- ^ suffix added to each helper name
+	-> Maybe String -- ^ name of return value of each putter or nothing for '()'
 	-> Bool -- ^ make arguments of instruction monadic
 	-> Q [Dec]
-instructionSet callName addrTyName tyName suffix monadicArgs = do
+instructionSet callName addrTyName tyName suffix retValTyName monadicArgs = do
 	let addrType = mkName addrTyName
 	let mkI = if monadicArgs
 		then makeInstrMonadicArgs suffix callName addrType
 		else makeInstr suffix callName addrType
 	Just t <- lookupTypeName tyName
+
+	tyRetVal <- case retValTyName of
+		Nothing -> return Nothing
+		Just ty -> lookupTypeName ty
+
 	TyConI (DataD _ _ _ _ con _) <- reify t
 	fmap concat $ forM con $ \c -> case c of
-		NormalC n bangTypeList -> mkI t n (map snd bangTypeList)
-		RecC n varBangTypeList -> mkI n t (map (\(_, _, tp) -> tp) varBangTypeList)
+		NormalC n bangTypeList -> mkI t n tyRetVal (map snd bangTypeList)
+		RecC n varBangTypeList -> mkI n t tyRetVal (map (\(_, _, tp) -> tp) varBangTypeList)
 		_ -> error "AsmTH.instructionSet" --FIXME elaborate
+

@@ -66,7 +66,7 @@ addInstruction = flip instruction_ 1
 
 -- * Generated helpers
 
-$(instructionSet "addInstruction" "Int" "I" "" False)
+$(instructionSet "addInstruction" "Int" "I" "" Nothing False)
 
 -- * Using embedded assembler
 
