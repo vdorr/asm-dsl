@@ -110,4 +110,4 @@ sumArray = mdo
 
 -- | Resulting program, can be displayed with 'Prelude.show'
 sumArrayProg :: [I]
-sumArrayProg = assemble sumArray
+sumArrayProg = assemble_ sumArray
