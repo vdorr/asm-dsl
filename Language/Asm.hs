@@ -11,11 +11,11 @@ module Language.Asm
 	, instruction
 	, instruction_
 	, label
+	, setPointer
 	, assembleT
 	, assemble
 	, assembleT_
 	, assemble_
-	, setPointer
 ) where
 
 import Control.Monad.State
