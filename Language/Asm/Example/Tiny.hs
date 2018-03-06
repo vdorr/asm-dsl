@@ -10,9 +10,11 @@
 module Language.Asm.Example.Tiny where
 
 import Prelude hiding (not, drop)
+import Control.Monad.State
 
 import Language.Asm
 import Language.Asm.TH
+import Language.Asm.Weave
 
 --------------------------------------------------------------------------------
 
@@ -33,7 +35,10 @@ data I
 	| Dup | Drop | Swap | Over
 	deriving Show
 
-evalOne :: I -> ([Int], Int, [Int]) -> ([Int], Int, [Int])
+-- | State of interpreter: memory, instruction pointer and data stack
+type VM = ([Int], Int, [Int])
+
+evalOne :: I -> VM -> VM
 evalOne (Push k) (m, i, d) = (m, i, k : d)
 evalOne Ld (m, i, a:d) = (m, i, (m !! a) : d)
 evalOne St (m, i, a:v:d) = (setElem m a v, i, d)
@@ -50,13 +55,35 @@ evalOne Over (m, i, x:y:d) = (m, i, y:x:y:d)
 evalOne Swap (m, i, x:y:d) = (m, i, y:x:d)
 evalOne i st = error ("evalOne " ++ show (i, st))
 
-eval :: [I] -> ([Int], Int, [Int]) -> ([Int], Int, [Int])
+eval :: [I] -> VM -> VM
 eval p st' = let
 	end = length p
 	f k st@(m, i, d)
 		| i >= k = st
 		| otherwise = f k (evalOne (p !! i) (m, i + 1, d))
 	in f end st'
+
+--------------------------------------------------------------------------------
+
+type MonadicVM a = State VM a
+
+monadicEval :: I -> MonadicVM ()
+monadicEval = modify . evalOne
+
+toWeaveProg :: I -> P (MonadicVM ())
+toWeaveProg (Jmp a) = Jump False a
+toWeaveProg (CJmp a) = Jump True a
+toWeaveProg i = Action $ monadicEval i
+
+--destructively read jump condition
+conditionFlag :: MonadicVM Bool
+conditionFlag = get >>= \(m, i, x:d) -> put (m, i, d) >> return (x /= 0)
+
+weaveI :: [I] -> Either String (MonadicVM ())
+weaveI = weaveM toWeaveProg (return ()) conditionFlag
+
+runVM :: MonadicVM () -> VM -> VM
+runVM = execState
 
 --------------------------------------------------------------------------------
 
@@ -70,7 +97,7 @@ $(instructionSet "addInstruction" "Int" "I" "" Nothing False)
 
 -- * Using embedded assembler
 
--- | See source for details
+-- | An example program, see source for details
 sumArray :: Asm Int I ()
 sumArray = mdo
 
@@ -111,3 +138,4 @@ sumArray = mdo
 -- | Resulting program, can be displayed with 'Prelude.show'
 sumArrayProg :: [I]
 sumArrayProg = assemble_ sumArray
+

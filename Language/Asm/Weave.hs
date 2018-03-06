@@ -5,17 +5,16 @@ module Language.Asm.Weave (
 ) where
 
 import Control.Monad (mapM)
---import Debug.Trace
 
 -- | Program element
 data P a
 	= Action a -- ^ simple action
 	| Jump Bool Int -- ^ jump to absolute address, flag indicates conditional jump
 
--- |
+-- | Bind actions together
 weaveM :: Monad m =>
-	(i -> P (m a)) -- ^
-	-> m a -- ^ action to run last, usually "return ()"
+	(i -> P (m a)) -- ^ convert instruction to aither simple action or jump
+	-> m a -- ^ interpreter action to run last, most likely "return ()"
 	-> m Bool -- ^ action that returns state of condition variable, True to jump
 	-> [i] -- ^ input program code
 	-> Either String (m a) -- ^ resulting action or error message regarding jump target
@@ -35,14 +34,12 @@ weave exit cf = fst . f exit [] . reverse
 	f p steps (Action a : rest) = let
 		a' = a >> p
 		in f a' (a' : steps) rest
---		in traceShow "c1" $ f a' (a' : steps) rest
 	f p steps (Jump conditional d : rest) = let
 		a'	| conditional = cf >>= \c -> if c then target else p
 			| otherwise = target
 		r@(_, whole) = f a' (a' : steps) rest
 		target = whole !! d
 		in r
---		in traceShow "c2" r
 	f p steps [] = (p, steps)
 
 
