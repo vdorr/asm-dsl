@@ -2,6 +2,8 @@
 module Main where
 
 import Language.Asm.Example.Tiny
+import Language.Asm.Weave
+
 import System.Exit (exitFailure)
 
 main :: IO ()
