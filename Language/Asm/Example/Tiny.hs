@@ -31,23 +31,31 @@ data I
 	| Jmp Int -- absolute jump
 	| CJmp Int -- conditional absolute jump
 
-	| Push Int
+	| PushNum Int
+	| PushBit Bool
 	| Dup | Drop | Swap | Over
 	deriving Show
 
+-- | Memory cell type
+data Cell
+	= Bit Bool
+	| Num Int
+	deriving (Show, Eq)
+
 -- | State of interpreter: memory, instruction pointer and data stack
-type VM = ([Int], Int, [Int])
+type VM = ([Cell], Int, [Cell])
 
 evalOne :: I -> VM -> VM
-evalOne (Push k) (m, i, d) = (m, i, k : d)
-evalOne Ld (m, i, a:d) = (m, i, (m !! a) : d)
-evalOne St (m, i, a:v:d) = (setElem m a v, i, d)
+evalOne (PushNum k) (m, i, d) = (m, i, Num k : d)
+evalOne (PushBit k) (m, i, d) = (m, i, Bit k : d)
+evalOne Ld (m, i, Num a:d) = (m, i, (m !! a) : d)
+evalOne St (m, i, Num a:v:d) = (setElem m a v, i, d)
 	where
 	setElem lst idx val = let (l, _:u) = splitAt idx lst in l ++ val : u
-evalOne LtE (m, i, y:x:d) = (m, i, (if x >= y then 1 else 0) : d)
-evalOne Eq (m, i, y:x:d) = (m, i, (if x == y then 1 else 0) : d)
-evalOne Add (m, i, y:x:d) = (m, i, (x + y) : d)
-evalOne (CJmp a) (m, i, x:d) = (m, if x == 0 then i else a, d)
+evalOne LtE (m, i, Num y:Num x:d) = (m, i, Bit (x >= y) : d)
+evalOne Eq (m, i, y:x:d) = (m, i, Bit (x == y) : d)
+evalOne Add (m, i, Num y:Num x:d) = (m, i, Num (x + y) : d)
+evalOne (CJmp a) (m, i, Bit x:d) = (m, if x then a else i, d)
 evalOne (Jmp a) (m, _, d) = (m, a, d)
 evalOne Drop (m, i, _:d) = (m, i, d)
 evalOne Dup (m, i, x:d) = (m, i, x:x:d)
@@ -77,7 +85,7 @@ toWeaveProg i = Action $ monadicEval i
 
 --destructively read jump condition
 conditionFlag :: MonadicVM Bool
-conditionFlag = get >>= \(m, i, x:d) -> put (m, i, d) >> return (x /= 0)
+conditionFlag = get >>= \(m, i, Bit x:d) -> put (m, i, d) >> return x
 
 weaveI :: [I] -> Either String (MonadicVM ())
 weaveI = weaveM toWeaveProg (return ()) conditionFlag
@@ -90,10 +98,16 @@ runVM = execState
 addInstruction :: Monad m => I -> AsmT Int I m ()
 addInstruction = flip instruction_ 1
 
-
--- * Generated helpers
+-- * Generated helpers for instruction set
 
 $(instructionSet "addInstruction" "Int" "I" "" Nothing False)
+
+addCell :: Monad m => Cell -> AsmT Int Cell m Int
+addCell = flip instruction 1
+
+-- * Generated helpers for data memory
+
+$(instructionSet "addCell" "Int" "Cell" "" (Just "Int") False)
 
 -- * Using embedded assembler
 
@@ -101,21 +115,21 @@ $(instructionSet "addInstruction" "Int" "I" "" Nothing False)
 sumArray :: Asm Int I ()
 sumArray = mdo
 
-	push 0 --number of cells
+	pushnum 0 --number of cells
 	ld
-	push 1 --add address of start of array
+	pushnum 1 --add address of start of array
 	add --this is start value
 
-	push 0 --sum
+	pushnum 0 --sum
 
 	begin <- label
 	over --check for cycle end
-	push 1
+	pushnum 1
 	eq
 	cjmp end
 
 	swap
-	push (-1) --decrement
+	pushnum (-1) --decrement
 	add
 	swap
 
@@ -126,9 +140,9 @@ sumArray = mdo
 	jmp begin
 	end <- label
 
-	push 0
+	pushnum 0
 	ld
-	push 1
+	pushnum 1
 	add
 	st
 
@@ -138,4 +152,41 @@ sumArray = mdo
 -- | Resulting program, can be displayed with 'Prelude.show'
 sumArrayProg :: [I]
 sumArrayProg = assemble_ sumArray
+
+sumArrayProg' :: [Int] -> ([I], [Cell])
+sumArrayProg' a = assemble $ do
+	count <- num 4
+	array <- label
+	forM_ a num
+	result <- num 0
+	assembleT_ $ mdo
+		pushnum count --address of 'count' cell
+		ld
+		pushnum array
+		add
+
+		pushnum 0 --sum
+
+		begin <- label
+		over --check for cycle end
+		pushnum 1
+		eq
+		cjmp end
+
+		swap
+		pushnum (-1) --decrement
+		add
+		swap
+
+		over
+		ld
+		add
+
+		jmp begin
+		end <- label
+
+		pushnum result
+		st
+
+		drop --discard cycle counter
 
