@@ -155,6 +155,7 @@ sumArrayProg = assemble_ sumArray
 
 sumArrayProg' :: [Int] -> ([I], [Cell])
 sumArrayProg' a = assemble $ do
+	bit False
 	count <- num 4
 	array <- label
 	forM_ a num
