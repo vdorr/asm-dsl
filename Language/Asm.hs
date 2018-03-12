@@ -18,6 +18,7 @@ module Language.Asm
 	, assemble
 	, assembleT_
 	, assemble_
+	, assembleAnnotatedT
 ) where
 
 import Control.Monad.State
