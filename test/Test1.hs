@@ -8,7 +8,7 @@ import Language.Asm
 import Data.Functor.Identity
 import System.Exit (exitFailure)
 
-invalidJump :: Asm Int I ()
+invalidJump :: Asm Int I () ()
 invalidJump = do
 	jmp 10
 

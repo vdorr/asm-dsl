@@ -11,8 +11,8 @@ import Control.Monad
 import Data.Char (toLower)
 import Data.Maybe (fromMaybe)
 
-makeInstr :: String -> String -> Name -> Name -> Name -> Maybe Name -> [Type] -> Q [Dec]
-makeInstr suffix callName addrType opType n retValType typeList = let
+makeInstr :: String -> String -> Name -> Name -> Maybe Name -> Name -> Maybe Name -> [Type] -> Q [Dec]
+makeInstr suffix callName addrType opType annType n retValType typeList = let
 	ari = length typeList
 	fName = mkName $ map toLower (nameBase n) ++ suffix
 	argNames = map (mkName . ("v" ++) . show) [1..ari]
@@ -24,16 +24,17 @@ makeInstr suffix callName addrType opType n retValType typeList = let
 
 	mVar = mkName "m" --variable representing underlying Monad
 	retValType' = fromMaybe (tupleT 0) (fmap conT retValType)
+	annType' = fromMaybe (tupleT 0) (fmap conT annType)
 
 	signature = foldr (\ a b -> appT (appT arrowT (return a)) b) retType typeList
 
-	retType = actionType addrType opType retValType'
+	retType = actionType addrType opType annType' retValType'
 
 	in do
 		sig <- sigD fName $ forallT
-			[PlainTV mVar]
-			(cxt [
-				simpleClassP "Monad" mVar
+			[PlainTV mVar] --forall m.
+			(cxt
+				[ simpleClassP "Monad" mVar
 				] )
 			signature
 
@@ -45,20 +46,23 @@ simpleClassP conName varName = (appT
 	(conT (mkName conName))
 	(varT varName))
 
--- | Generate type of putter action 'AsmT addrType opType resultType'
-actionType :: Name -> Name -> TypeQ -> TypeQ
-actionType addrType opType resultType
-	= appT (appT
+-- | Generate type of putter action 'AsmT addrType opType annotation resultType'
+actionType :: Name -> Name -> TypeQ -> TypeQ -> TypeQ
+actionType addrType opType annType resultType
+	= appT
 		(appT
 			(appT
-				(conT (mkName "AsmT"))
-				(conT addrType))
-			(conT opType))
-		(varT (mkName "m")))
-		resultType
+				(appT (appT
+					(conT (mkName "AsmT"))
+					(conT addrType))
+					(conT opType))
+--					(conT annType))
+					annType)
+					(varT (mkName "m")))
+					resultType
 
-makeInstrMonadicArgs :: String -> String -> Name -> Name -> Name -> Maybe Name -> [Type] -> Q [Dec]
-makeInstrMonadicArgs suffix callName addrType opType n retValType typeList = let
+makeInstrMonadicArgs :: String -> String -> Name -> Name -> Maybe Name -> Name -> Maybe Name -> [Type] -> Q [Dec]
+makeInstrMonadicArgs suffix callName addrType opType annType n retValType typeList = let
 	ari = length typeList
 	fName = mkName $ map toLower (nameBase n) ++ suffix
 	argNames = map (mkName . ("v" ++) . show) [1..ari]
@@ -73,10 +77,11 @@ makeInstrMonadicArgs suffix callName addrType opType n retValType typeList = let
 
 	body' = appE (varE (mkName callName)) body
 
-	signature = foldr (\ a b -> appT (appT arrowT ( actionType addrType opType(return a))) b) retType typeList
+	signature = foldr (\ a b -> appT (appT arrowT ( actionType addrType opType annType' (return a))) b) retType typeList
 
 	retValType' = fromMaybe (tupleT 0) (fmap conT retValType)
-	retType = actionType addrType opType retValType'
+	retType = actionType addrType opType annType' retValType'
+	annType' = fromMaybe (tupleT 0) (fmap conT annType)
 
 	in do
 		sig <- sigD fName $ forallT
@@ -94,11 +99,12 @@ instructionSet
 	:: String -- ^ name of function to call in instruction value, typically 'Language.Asm.instruction'
 	-> String -- ^ name of type of memory address, addr parameter of 'Language.Asm.AsmT' type
 	-> String -- ^ name of instruction set type
+	-> Maybe String -- ^ name of annotation type
 	-> String -- ^ suffix added to each helper name
 	-> Maybe String -- ^ name of return value of each putter or nothing for '()'
 	-> Bool -- ^ make arguments of instruction monadic
 	-> Q [Dec]
-instructionSet callName addrTyName tyName suffix retValTyName monadicArgs = do
+instructionSet callName addrTyName tyName annTyName suffix retValTyName monadicArgs = do
 	let addrType = mkName addrTyName
 	let mkI = if monadicArgs
 		then makeInstrMonadicArgs suffix callName addrType
@@ -111,7 +117,7 @@ instructionSet callName addrTyName tyName suffix retValTyName monadicArgs = do
 
 	TyConI (DataD _ _ _ _ con _) <- reify t
 	fmap concat $ forM con $ \c -> case c of
-		NormalC n bangTypeList -> mkI t n tyRetVal (map snd bangTypeList)
-		RecC n varBangTypeList -> mkI n t tyRetVal (map (\(_, _, tp) -> tp) varBangTypeList)
+		NormalC n bangTypeList -> mkI t (fmap mkName annTyName) n tyRetVal (map snd bangTypeList)
+		RecC n varBangTypeList -> mkI n (fmap mkName annTyName) t tyRetVal (map (\(_, _, tp) -> tp) varBangTypeList)
 		_ -> error "AsmTH.instructionSet" --FIXME elaborate
 

@@ -95,24 +95,24 @@ runVM = execState
 
 --------------------------------------------------------------------------------
 
-addInstruction :: Monad m => I -> AsmT Int I m ()
+addInstruction :: Monad m => I -> AsmT Int I () m ()
 addInstruction = flip instruction_ 1
 
 -- * Generated helpers for instruction set
 
-$(instructionSet "addInstruction" "Int" "I" "" Nothing False)
+$(instructionSet "addInstruction" "Int" "I" Nothing "" Nothing False)
 
-addCell :: Monad m => Cell -> AsmT Int Cell m Int
+addCell :: Monad m => Cell -> AsmT Int Cell () m Int
 addCell = flip instruction 1
 
 -- * Generated helpers for data memory
 
-$(instructionSet "addCell" "Int" "Cell" "" (Just "Int") False)
+$(instructionSet "addCell" "Int" "Cell" Nothing "" (Just "Int") False)
 
 -- * Using embedded assembler
 
 -- | An example program, see source for details
-sumArray :: Asm Int I ()
+sumArray :: Asm Int I () ()
 sumArray = mdo
 
 	pushnum 0 --number of cells

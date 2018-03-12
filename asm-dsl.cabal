@@ -26,7 +26,7 @@ Test-Suite t1
   hs-source-dirs:    test
   main-is:           Test1.hs
   default-language:  Haskell2010
-  GHC-Options:       -Wall -fno-warn-tabs
+  GHC-Options:       -Wall -fno-warn-tabs -ddump-splices
 
 library
   exposed-modules:   Language.Asm.Example.Tiny, Language.Asm, Language.Asm.TH, Language.Asm.Weave
@@ -34,4 +34,4 @@ library
   other-extensions:  TemplateHaskell, RecursiveDo
   build-depends:     base >=4.9 && <4.10, mtl >=2.2 && <2.3, template-haskell >=2.11 && <2.12
   default-language:  Haskell2010
-  GHC-Options:       -Wall -fno-warn-tabs
+  GHC-Options:       -Wall -fno-warn-tabs -ddump-splices
