@@ -12,8 +12,8 @@ module Language.Asm
 	, instruction_
 	, label
 	, setPointer
---	, annotate
---	, annotated
+	, annotate_
+	, annotated_
 	, assembleT
 	, assemble
 	, assembleT_
