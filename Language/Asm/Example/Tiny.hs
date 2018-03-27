@@ -14,7 +14,6 @@ import Control.Monad.State
 
 import Language.Asm
 import Language.Asm.TH
-import Language.Asm.Weave
 
 --------------------------------------------------------------------------------
 
@@ -70,28 +69,6 @@ eval p st' = let
 		| i >= k = st
 		| otherwise = f k (evalOne (p !! i) (m, i + 1, d))
 	in f end st'
-
---------------------------------------------------------------------------------
-
-type MonadicVM a = State VM a
-
-monadicEval :: I -> MonadicVM ()
-monadicEval = modify . evalOne
-
-toWeaveProg :: I -> P (MonadicVM ())
-toWeaveProg (Jmp a) = Jump False a
-toWeaveProg (CJmp a) = Jump True a
-toWeaveProg i = Action $ monadicEval i
-
---destructively read jump condition
-conditionFlag :: MonadicVM Bool
-conditionFlag = get >>= \(m, i, Bit x:d) -> put (m, i, d) >> return x
-
-weaveI :: [I] -> Either String (MonadicVM ())
-weaveI = weaveM toWeaveProg (return ()) conditionFlag
-
-runVM :: MonadicVM () -> VM -> VM
-runVM = execState
 
 --------------------------------------------------------------------------------
 

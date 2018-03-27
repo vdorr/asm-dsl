@@ -21,7 +21,13 @@ source-repository head
   location:             git://github.com/vdorr/asm-dsl
 
 Test-Suite t1
-  build-depends:     asm-dsl, base >=4.9 && <4.10, mtl >=2.2 && <2.3, template-haskell >=2.11 && <2.12
+  build-depends:     asm-dsl
+                   , base >=4.9 && <4.10
+                   , mtl >=2.2 && <2.3
+                   , template-haskell >=2.11 && <2.12
+                   , HUnit
+                   , test-framework
+                   , test-framework-hunit
   type:              exitcode-stdio-1.0
   hs-source-dirs:    test
   main-is:           Test1.hs
@@ -29,7 +35,7 @@ Test-Suite t1
   GHC-Options:       -Wall -fno-warn-tabs
 
 library
-  exposed-modules:   Language.Asm.Example.Tiny, Language.Asm, Language.Asm.TH, Language.Asm.Weave
+  exposed-modules:   Language.Asm.Example.Tiny, Language.Asm, Language.Asm.TH
   -- other-modules:
   other-extensions:  TemplateHaskell, RecursiveDo
   build-depends:     base >=4.9 && <4.10, mtl >=2.2 && <2.3, template-haskell >=2.11 && <2.12
